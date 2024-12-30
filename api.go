@@ -17,10 +17,14 @@ func NewAPIServer(addr string) *APIServer {
 
 func (s *APIServer) Run() error {
 	router := http.NewServeMux()
+
 	router.HandleFunc("GET /users/{userID}", func(w http.ResponseWriter, r *http.Request) {
 		userID := r.PathValue("userID")
 		w.Write([]byte("User ID: " + userID))
 	})
+
+	v1 := http.NewServeMux()
+	v1.Handle("/api/v1/", http.StripPrefix("/api/v1", router))
 
 	middlewareChain := MiddlewareChain(
 		RequestLoggerMiddleware,
@@ -29,7 +33,7 @@ func (s *APIServer) Run() error {
 
 	server := http.Server{
 		Addr:    s.addr,
-		Handler: middlewareChain(router),
+		Handler: middlewareChain(v1),
 	}
 
 	log.Printf("Server has started %s", s.addr)
