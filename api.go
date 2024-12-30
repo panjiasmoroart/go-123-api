@@ -22,9 +22,14 @@ func (s *APIServer) Run() error {
 		w.Write([]byte("User ID: " + userID))
 	})
 
+	middlewareChain := MiddlewareChain(
+		RequestLoggerMiddleware,
+		RequireAuthMiddleware,
+	)
+
 	server := http.Server{
 		Addr:    s.addr,
-		Handler: RequireAuthMiddleware(RequestLoggerMiddleware(router)),
+		Handler: middlewareChain(router),
 	}
 
 	log.Printf("Server has started %s", s.addr)
@@ -48,5 +53,17 @@ func RequireAuthMiddleware(next http.Handler) http.HandlerFunc {
 		}
 
 		next.ServeHTTP(w, r)
+	}
+}
+
+type Middleware func(http.Handler) http.HandlerFunc
+
+func MiddlewareChain(middlewares ...Middleware) Middleware {
+	return func(next http.Handler) http.HandlerFunc {
+		for i := len(middlewares) - 1; i >= 0; i-- {
+			next = middlewares[i](next)
+		}
+
+		return next.ServeHTTP
 	}
 }
