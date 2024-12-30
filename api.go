@@ -24,7 +24,7 @@ func (s *APIServer) Run() error {
 
 	server := http.Server{
 		Addr:    s.addr,
-		Handler: RequestLoggerMiddleware(router),
+		Handler: RequireAuthMiddleware(RequestLoggerMiddleware(router)),
 	}
 
 	log.Printf("Server has started %s", s.addr)
@@ -35,6 +35,18 @@ func (s *APIServer) Run() error {
 func RequestLoggerMiddleware(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("method: %s, path: %s", r.Method, r.URL.Path)
+		next.ServeHTTP(w, r)
+	}
+}
+
+func RequireAuthMiddleware(next http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := r.Header.Get("Authorization")
+		if token != "Bearer token" {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
 		next.ServeHTTP(w, r)
 	}
 }
